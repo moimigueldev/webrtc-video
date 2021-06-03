@@ -10,6 +10,14 @@ let creator = false;
 let rtcPeerConnection;
 let userStream;
 
+let divButtonGroup = document.getElementById('btn-group');
+let muteButton = document.getElementById('muteButton');
+let hideCameraButton = document.getElementById('hideCameraButton');
+let leaveRoomButton = document.getElementById('leaveRoomButton');
+
+let muteFlag = false;
+let hideCameraFlag = false;
+
 // Contains the stun server URL we will be using.
 let iceServers = {
   iceServers: [
@@ -27,6 +35,30 @@ joinButton.addEventListener('click', function () {
   }
 });
 
+muteButton.addEventListener('click', function () {
+  muteFlag = !muteFlag;
+  if (muteFlag) {
+    userStream.getTracks()[0].enabled = false;
+    muteButton.innerText = 'Unmute';
+  } else {
+    muteButton.innerText = 'Mute';
+    userStream.getTracks()[0].enabled = true;
+  }
+});
+
+hideCameraButton.addEventListener('click', function () {
+  hideCameraFlag = !hideCameraFlag;
+  if (hideCameraFlag) {
+    userStream.getTracks()[1].enabled = false;
+
+    hideCameraButton.innerText = 'Show Camera';
+  } else {
+    userStream.getTracks()[1].enabled = true;
+
+    hideCameraButton.innerText = 'Hide Camera';
+  }
+});
+
 // Triggered when a room is succesfully created.
 
 socket.on('created', function () {
@@ -41,6 +73,7 @@ socket.on('created', function () {
       /* use the stream */
       userStream = stream;
       divVideoChatLobby.style = 'display:none';
+      divButtonGroup.style = 'display:flex';
       userVideo.srcObject = stream;
       userVideo.onloadedmetadata = function (e) {
         userVideo.play();
@@ -66,6 +99,8 @@ socket.on('joined', function () {
       /* use the stream */
       userStream = stream;
       divVideoChatLobby.style = 'display:none';
+      divButtonGroup.style = 'display:flex';
+
       userVideo.srcObject = stream;
       userVideo.onloadedmetadata = function (e) {
         userVideo.play();
@@ -120,6 +155,7 @@ socket.on('offer', function (offer) {
     rtcPeerConnection = new RTCPeerConnection(iceServers);
     rtcPeerConnection.onicecandidate = OnIceCandidateFunction;
     rtcPeerConnection.ontrack = OnTrackFunction;
+    console.log('tracks', userStream.getTracks());
     rtcPeerConnection.addTrack(userStream.getTracks()[0], userStream);
     rtcPeerConnection.addTrack(userStream.getTracks()[1], userStream);
     rtcPeerConnection.setRemoteDescription(offer);
@@ -158,3 +194,39 @@ function OnTrackFunction(event) {
     peerVideo.play();
   };
 }
+
+leaveRoomButton.addEventListener('click', function () {
+  socket.emit('leave', roomName);
+  divVideoChatLobby.style = 'display:block';
+  divButtonGroup.style = 'display:none';
+
+  if (userVideo.srcObject) {
+    userVideo.srcObject.getTracks()[0].stop();
+    userVideo.srcObject.getTracks()[1].stop();
+  }
+
+  if (peerVideo.srcObject) {
+    peerVideo.srcObject.getTracks()[0].stop();
+    peerVideo.srcObject.getTracks()[1].stop();
+  }
+
+  if (rtcPeerConnection) {
+    rtcPeerConnection.ontrack = null;
+    rtcPeerConnection.onicecandidate = null;
+    rtcPeerConnection.close();
+    rtcPeerConnection.null();
+  }
+});
+
+socket.on('leave', () => {
+  if (rtcPeerConnection) {
+    rtcPeerConnection.ontrack = null;
+    rtcPeerConnection.onicecandidate = null;
+    rtcPeerConnection.close();
+    rtcPeerConnection.null();
+  }
+  if (peerVideo.srcObject) {
+    peerVideo.srcObject.getTracks()[0].stop();
+    peerVideo.srcObject.getTracks()[1].stop();
+  }
+});

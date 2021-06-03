@@ -49,4 +49,9 @@ io.on('connection', (socket) => {
     console.log('answer');
     socket.broadcast.to(roomName).emit('answer', answer);
   });
+
+  socket.on('leave', (roomName) => {
+    socket.leave(roomName);
+    socket.broadcast.to(roomName).emit('leave');
+  });
 });
