@@ -1,3 +1,4 @@
 .DS_Store
 .VSCode
 .env
+node_modules
